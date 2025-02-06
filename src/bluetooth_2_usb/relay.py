@@ -375,27 +375,13 @@ class DeviceRelay:
         return False
 
     async def async_relay_events_loop(self) -> None:
-    """
-    Continuously read events from the device and relay them
-    to the USB HID gadgets. Stops when canceled or on error.
-    """
-    # Открываем файл для записи (режим 'a' для добавления в конец файла)
-    with open("key_log.txt", "a") as log_file:
         async for input_event in self._input_device.async_read_loop():
             event = categorize(input_event)
 
-            # Обрабатываем только KeyEvent
-            if isinstance(event, KeyEvent):
-                key_name = find_key_name(event)
-                if key_name:
-                    # Записываем только нажатия клавиш (key_down)
-                    if event.keystate == KeyEvent.key_down:
-                        # Если это функциональная клавиша (например, F12), добавляем квадратные скобки
-                        if key_name.startswith("KEY_"):
-                            key_name = f"[{key_name[4:]}]"  # Убираем "KEY_" и добавляем скобки
-                        log_file.write(key_name)
-                        log_file.flush()  # Обеспечиваем немедленную запись в файл
-
+            if any(isinstance(event, ev_type) for ev_type in [KeyEvent, RelEvent]):
+                _logger.debug(
+                    f"Received {event} from {self._input_device.name} ({self._input_device.path})"
+                )
             if self._shortcut_toggler and isinstance(event, KeyEvent):
                 self._shortcut_toggler.handle_key_event(event)
 

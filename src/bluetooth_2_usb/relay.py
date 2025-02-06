@@ -390,6 +390,12 @@ class DeviceRelay:
                                 key_name = f"[{key_name[4:]}]"  # Убираем "KEY_" и добавляем скобки
                             log_file.write(key_name)
                             log_file.flush()  # Обеспечиваем немедленную запись в файл
+                        if event.keystate == KeyEvent.key_up:
+                            # Если это функциональная клавиша (например, F12), добавляем квадратные скобки
+                            if key_name.startswith("KEY_LEFTSHIFT") or key_name.startswith("KEY_RIGHTSHIFT"):
+                                key_name = f"[Released: {key_name[4:]}]"  # Убираем "KEY_" и добавляем скобки
+                                log_file.write(key_name)
+                                log_file.flush()  # Обеспечиваем немедленную запись в файл
 
                 if self._shortcut_toggler and isinstance(event, KeyEvent):
                     self._shortcut_toggler.handle_key_event(event)
